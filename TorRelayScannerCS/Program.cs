@@ -1,6 +1,8 @@
 ﻿using System.Data;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
 using Tor_relay_scanner_CS.Relays;
 
 namespace Tor_relay_scanner_CS
@@ -33,10 +35,10 @@ namespace Tor_relay_scanner_CS
         /// <param name="url">Preferred alternative URL for onionoo relay list. Could be used multiple times.</param>
         /// <param name="p">Scan for relays running on specified port number. Could be used multiple times.</param>
         /// <param name="browserLocation">Tor browser executable location for startBrowser parameter</param>
-        /// <param name="installBridges">Install bridges into Tor browser</param>
-        /// <param name="startBrowser">Launch browser after scanning</param>
+        /// <param name="notInstallBridges">Install bridges into Tor browser</param>
+        /// <param name="notStartBrowser">Launch browser after scanning</param>
         /// <param name="useOutdated">Use already existing outdated relay info</param>
-        public static void Main(uint n=2000, uint g=5, string? c=null, uint timeout=900, string? o=null, bool torrc=false, string? proxy=null, string[]? url=null, uint[]? p=null, string? browserLocation=null, bool installBridges=false, bool startBrowser=false, bool useOutdated=false)
+        public static void Main(uint n=2000, uint g=5, string? c=null, uint timeout=900, string? o=null, bool torrc=false, string? proxy=null, string[]? url=null, uint[]? p=null, string? browserLocation=null, bool notInstallBridges=false, bool notStartBrowser=false, bool useOutdated=false)
         {
             Goal = g;
             string relayInfoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "relay-info.json");
@@ -106,27 +108,15 @@ namespace Tor_relay_scanner_CS
 
             if (o != null) File.WriteAllLines(o, WorkingRelayStrings.Select((x, _) => (torrc ? "Bridge " : "") + x).Append("UseBridges 1").Reverse()); // We'll try to keep UseBridges 1 as a first string
 
-            if (installBridges)
+            if (browserLocation == null && (!notInstallBridges || !notStartBrowser))
             {
-                if (browserLocation == null)
-                {
-                    Console.WriteLine("warning: installBridges is set, but browserLocation is not set");
-                    Console.WriteLine("warning: trying to install, using auto-detect location");
-                    browserLocation = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Tor Browser\\Browser");
-                }
-                EditBrowser(Path.GetFullPath(Path.Combine(browserLocation, "TorBrowser\\Data\\Browser\\profile.default\\prefs.js")));
+                Console.WriteLine("warning: trying to use auto-detected tor browser location");
+                browserLocation = GetBrowserLocation();
             }
 
-            if (startBrowser)
-            {
-                if (browserLocation == null)
-                {
-                    Console.WriteLine("warning: installBridges is set, but browserLocation is not set");
-                    Console.WriteLine("warning: trying to install, using auto-detect location");
-                    browserLocation = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Tor Browser\\Browser\\");
-                }
-                StartBrowser(Path.GetFullPath(browserLocation));
-            }
+            if (!notInstallBridges) InstallBridges(Path.GetFullPath(Path.Combine(browserLocation, "TorBrowser\\Data\\Browser\\profile.default\\prefs.js")));
+
+            if (!notStartBrowser) StartBrowser(Path.GetFullPath(browserLocation));
         }
 
         private static void Console_CancelKeyPress(object? sender, ConsoleCancelEventArgs e)
@@ -148,7 +138,47 @@ namespace Tor_relay_scanner_CS
             if (WorkingRelayStrings.Count >= Goal) RelayScanner.StopScan();
         }
 
-        private static void EditBrowser(string file)
+        private static string GetBrowserLocation()
+        {
+            string location = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Tor Browser\\Browser");
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                string keyName = "SOFTWARE\\Tor Project\\Firefox\\Launcher";
+                RegistryKey?[] subKeys = new RegistryKey?[]
+                {
+                    Registry.CurrentUser.OpenSubKey(keyName),
+                    Registry.LocalMachine.OpenSubKey(keyName)
+                };
+
+                try
+                {
+                    foreach (RegistryKey? regKey in subKeys)
+                    {
+                        if (regKey == null) continue;
+
+                        foreach (string name in regKey.GetValueNames())
+                        {
+                            FileInfo info;
+                            if (name.Split("|")[1] == "Browser")
+                            {
+                                info = new FileInfo(name.Split("|")[0]);
+                                if (info != null && info.Directory != null) return info.Directory.FullName;
+                            }
+                        }
+                    }
+                }
+                catch (Exception) {}
+                finally
+                {
+                    subKeys.ToList().ForEach(subKey => subKey?.Dispose());
+                }
+            }
+
+            return location;
+        }
+
+        private static void InstallBridges(string file)
         {
             try
             {
@@ -162,50 +192,57 @@ namespace Tor_relay_scanner_CS
                     contents.Add(string.Format("user_pref(" + '"' + "torbrowser.settings.bridges.bridge_strings.{0}" + '"' + ", {1});", i, '"' + WorkingRelayStrings[i] + '"'));
                 }
                 File.WriteAllLines(file, contents);
-                Console.WriteLine("done: browser updated");
+                Console.WriteLine("done: install bridges");
             }
             catch(Exception e)
             {
-                Console.WriteLine("fail: browser {0}", e.Message);
+                Console.WriteLine("fail: install bridges - {0}", e.Message);
             }
         }
 
         private static void StartBrowser(string path)
         {
-            string fileName = string.Empty;
-            string args = string.Empty;
-
+            string args;
+            string fileName;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 fileName = Path.Combine(path, "start-tor-browser");
                 args = "--detach";
-            }else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 fileName = Path.Combine(path, "firefox.exe");
                 args = "";
             }
             else
             {
-                Console.WriteLine("fail: browser start OS unsupported");
+                Console.WriteLine("fail: browser start - OS unsupported");
                 return;
             }
 
-            ProcessStartInfo startInfo = new()
+            try
             {
-                FileName = fileName,
-                Arguments = args,
-                //UseShellExecute = false,
-                CreateNoWindow = false,
-                RedirectStandardOutput = false,
-                RedirectStandardError = false,
-            };
+                ProcessStartInfo startInfo = new()
+                {
+                    FileName = fileName,
+                    Arguments = args,
+                    //UseShellExecute = false,
+                    CreateNoWindow = false,
+                    RedirectStandardOutput = false,
+                    RedirectStandardError = false,
+                };
 
-            Process process = new()
+                Process process = new()
+                {
+                    StartInfo = startInfo,
+                };
+
+                process.Start();
+            }
+            catch (Exception e)
             {
-                StartInfo = startInfo,
-            };
-
-            process.Start();
+                Console.WriteLine("fail: browser start - {0}", e.Message);
+            }
         }
     }
 }
