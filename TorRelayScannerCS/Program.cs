@@ -34,9 +34,9 @@ namespace Tor_relay_scanner_CS
         /// <param name="proxy">Set proxy for onionoo information download. Format: http://user:pass@host:port; socks5h://user:pass@host:port</param>
         /// <param name="url">Preferred alternative URL for onionoo relay list. Could be used multiple times.</param>
         /// <param name="p">Scan for relays running on specified port number. Could be used multiple times.</param>
-        /// <param name="browserLocation">Tor browser executable location for startBrowser parameter</param>
-        /// <param name="notInstallBridges">Install bridges into Tor browser</param>
-        /// <param name="notStartBrowser">Launch browser after scanning</param>
+        /// <param name="browserLocation">Tor browser executable location</param>
+        /// <param name="notInstallBridges">Not install bridges into Tor browser</param>
+        /// <param name="notStartBrowser">Not launch browser after scanning</param>
         /// <param name="useOutdated">Use already existing outdated relay info</param>
         public static void Main(uint n=2000, uint g=5, string? c=null, uint timeout=900, string? o=null, bool torrc=false, string? proxy=null, string[]? url=null, uint[]? p=null, string? browserLocation=null, bool notInstallBridges=false, bool notStartBrowser=false, bool useOutdated=false)
         {
