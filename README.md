@@ -33,9 +33,9 @@ Options:
 Note: browser-location is exptected to contain an executable inside, by default on windows is usually: C:\Users\user\Desktop\Tor Browser\Browser (e.g Tor Browser\Browser in Desktop)
 
 ## Behaviour difference compared to original program
-Downloaded relay info is saved into the same directory as the program (relay-info.json file).
-Program tries to use this already downloaded information.
-If downloaded information >1 day older, program tries to download fresh copy.
+Downloaded relay info is saved into the file in the same directory as the program (relay-info.json file).
+Program tries to use this already downloaded information first.
+If information in the file is >=1 days older, program tries to download fresh copy.
 If you wish to use already existing outdated file, add `--use-outdated` flag.
 
 Different logging format.
