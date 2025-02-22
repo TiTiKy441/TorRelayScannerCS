@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security;
 using Microsoft.Win32;
 using Tor_relay_scanner_CS.Relays;
 
@@ -55,7 +56,7 @@ namespace Tor_relay_scanner_CS
                 TimeSpan downloadedDiff = DateTime.Now.Subtract(downloadedPublishedDate);
                 if (downloadedDiff.TotalDays > 1)
                 {
-                    Console.WriteLine("warning: found already existing relay information, but it was outdated by {0} hours", (int)downloadedDiff.TotalHours);
+                    Console.WriteLine("warn: found already existing relay information, but it was outdated by {0} hours", (int)downloadedDiff.TotalHours);
                     if (!useOutdated) RelayDistributor.Reset();
                 }
             }
@@ -90,7 +91,7 @@ namespace Tor_relay_scanner_CS
             TimeSpan diff = DateTime.Now.Subtract(publishedDate);
             if (diff.TotalDays > 1)
             {
-                Console.WriteLine("warning: retrieved relay information is outdated by {0} hours", (int)diff.TotalHours);
+                Console.WriteLine("warn: retrieved relay information is outdated by {0} hours", (int)diff.TotalHours);
             }
 
             RelayScanner.OnNewWorkingRelay += RelayScanner_OnNewWorkingRelay;
@@ -106,11 +107,11 @@ namespace Tor_relay_scanner_CS
             Console.Title = "Scan ended: " + WorkingRelayStrings.Count;
             Console.WriteLine("done: scan ended - {0}", WorkingRelayStrings.Count);
 
-            if (o != null) File.WriteAllLines(o, WorkingRelayStrings.Select((x, _) => (torrc ? "Bridge " : "") + x).Append("UseBridges 1").Reverse()); // We'll try to keep UseBridges 1 as a first string
+            if (o != null) File.WriteAllLines(o, torrc ? WorkingRelayStrings.Select((x, _) => "Bridge " + x).Append("UseBridges 1").Reverse() : WorkingRelayStrings); // We'll try to keep UseBridges 1 as a first string
 
             if (browserLocation == null && (!notInstallBridges || !notStartBrowser))
             {
-                Console.WriteLine("warning: trying to use auto-detected tor browser location");
+                Console.WriteLine("warn: trying to use auto-detected tor browser location");
                 browserLocation = GetBrowserLocation();
             }
 
@@ -140,7 +141,28 @@ namespace Tor_relay_scanner_CS
 
         private static string GetBrowserLocation()
         {
-            string location = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Tor Browser\\Browser");
+            string torPathAdd = "Tor Browser\\Browser";
+            string location = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), torPathAdd);
+
+            List<string> searchFolders = new()
+            {
+                Environment.GetFolderPath(Environment.SpecialFolder.Programs),
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory),
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms),
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonProgramFiles),
+            };
+
+            searchFolders = searchFolders.Select(x => Path.Combine(x, torPathAdd)).ToList();
+
+            foreach (string folder in searchFolders)
+            {
+                if (Directory.Exists(folder))
+                {
+                    Console.WriteLine("info: found tor browser directory in special folders");
+                    location = Path.GetFullPath(folder);
+                }
+            }
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -148,7 +170,7 @@ namespace Tor_relay_scanner_CS
                 RegistryKey?[] subKeys = new RegistryKey?[]
                 {
                     Registry.CurrentUser.OpenSubKey(keyName),
-                    Registry.LocalMachine.OpenSubKey(keyName)
+                    Registry.LocalMachine.OpenSubKey(keyName),
                 };
 
                 try
@@ -163,12 +185,18 @@ namespace Tor_relay_scanner_CS
                             if (name.Split("|")[1] == "Browser")
                             {
                                 info = new FileInfo(name.Split("|")[0]);
-                                if (info != null && info.Directory != null) return info.Directory.FullName;
+                                if (info != null && info.Directory != null)
+                                {
+                                    Console.WriteLine("info: found tor browser location in registry");
+                                    location = info.Directory.FullName;
+                                }
                             }
                         }
                     }
                 }
-                catch (Exception) {}
+                catch (Exception) 
+                {
+                }
                 finally
                 {
                     subKeys.ToList().ForEach(subKey => subKey?.Dispose());
@@ -184,8 +212,28 @@ namespace Tor_relay_scanner_CS
             {
                 List<string> contents = File.ReadAllLines(file).ToList();
                 contents.RemoveAll(x => x.Contains("torbrowser.settings.bridges."));
-                contents.Add("user_pref(" + '"' + "torbrowser.settings.bridges.enabled" + '"' + ", true);");
-                contents.Add("user_pref(" + '"' + "torbrowser.settings.bridges.source" + '"' + ", 2);");
+
+                if (!contents.Contains("user_pref(\"torbrowser.settings.enabled\", true);"))
+                {
+                    contents.Remove("user_pref(\"torbrowser.settings.enabled\", false);");
+                    contents.Add("user_pref(\"torbrowser.settings.enabled\", true);");
+                }
+
+                if (!contents.Contains("user_pref(\"torbrowser.settings.firewall.enabled\", false);"))
+                {
+                    contents.Remove("user_pref(\"torbrowser.settings.firewall.enabled\", true);");
+                    contents.Add("user_pref(\"torbrowser.settings.firewall.enabled\", false);");
+                }
+
+                if (!contents.Contains("user_pref(\"torbrowser.settings.proxy.enabled\", false);"))
+                {
+                    contents.Remove("user_pref(\"torbrowser.settings.proxy.enabled\", true);");
+                    contents.Add("user_pref(\"torbrowser.settings.proxy.enabled\", false);");
+                }
+
+                contents.Add("user_pref(\"torbrowser.settings.bridges.enabled\", true);");
+                contents.Add("user_pref(\"torbrowser.settings.bridges.source\", 2);");
+                contents.Add("user_pref(\"torbrowser.settings.bridges.builtin_type\", \"\");");
 
                 for (int i = 0; i < WorkingRelayStrings.Count; i++) 
                 {
@@ -238,6 +286,7 @@ namespace Tor_relay_scanner_CS
                 };
 
                 process.Start();
+                Console.WriteLine("done: browser start");
             }
             catch (Exception e)
             {

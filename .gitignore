@@ -1,3 +1,5 @@
 /.vs
 /TorRelayScannerCS/obj
 /TorRelayScannerCS/bin
+TorRelayScannerCS/TorRelayScannerCS.csproj.user
+TorRelayScannerCS/Properties/PublishProfiles/FolderProfile.pubxml.user
