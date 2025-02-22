@@ -33,12 +33,17 @@ Options:
 Note: browser-location is exptected to contain an executable inside, by default on windows is usually: C:\Users\user\Desktop\Tor Browser\Browser (e.g Tor Browser\Browser in Desktop)
 
 ## Behaviour difference compared to original program
-Different logging format
+Downloaded relay info is saved into the file in the same directory as the program (relay-info.json file).
+Program tries to use this already downloaded information first.
+If information in the file is >=1 days older, program tries to download fresh copy.
+If you wish to use already existing outdated file, add `--use-outdated` flag.
 
-Browser location is not required, program tries to auto-detect it
+Different logging format.
 
-install-bridges and start-browser turned to not-install-bridges and not-start-browser
+Browser location is not required, program tries to auto-detect it by enumerating special paths and (only on windows) searching for tor browser launcher key in registry.
 
-behaviour by default install bridges and starts the browser
+install-bridges and start-browser turned to not-install-bridges and not-start-browser.
 
--c argument doesnt support preffered countries, only include or exclude
+behaviour by default install bridges and start the browser.
+
+-c argument doesnt support preffered countries, only include or exclude.
