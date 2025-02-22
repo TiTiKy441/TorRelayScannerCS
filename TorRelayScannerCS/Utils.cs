@@ -49,11 +49,30 @@ namespace Tor_relay_scanner_CS
         public static void ReinitHttpClient(string? proxy = null)
         {
             _httpClient.Dispose();
-            if (proxy != null) HttpClient.DefaultProxy = new WebProxy(new Uri(proxy));
-            else HttpClient.DefaultProxy = new WebProxy();
-            _httpClient = new HttpClient()
+            if (proxy == null)
             {
-                Timeout = TimeSpan.FromMilliseconds(5000),
+                _httpClient = new HttpClient()
+                {
+                    Timeout = _httpClient.Timeout,
+                };
+                return;
+            }
+            Uri uri = new(proxy);
+            string[] creds = uri.UserInfo.Split(':' , 2);
+            WebProxy webProxy = new(uri);
+            if (proxy.Contains('@')) 
+            {
+                webProxy.Credentials = new NetworkCredential(creds[0], creds[1]);
+                webProxy.UseDefaultCredentials = false;
+            }
+            HttpClientHandler handler = new()
+            {
+                Proxy = webProxy,
+                UseProxy = true,
+            };
+            _httpClient = new HttpClient(handler)
+            {
+                Timeout = _httpClient.Timeout,
             };
         }
 

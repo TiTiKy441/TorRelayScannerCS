@@ -12,7 +12,7 @@ namespace Tor_relay_scanner_CS.Relays
 
         public static RelayDistributor Instance { get; private set; }
 
-        public RelayList RelayInfo { get; private set; }
+        public RelayInformation RelayInfo { get; private set; }
 
         public List<Relay> ExitRelays { get; private set; } = new();
         public List<Relay> GuardRelays { get; private set; } = new();
@@ -46,6 +46,11 @@ namespace Tor_relay_scanner_CS.Relays
             }
         }
 
+        public TimeSpan GetRelayPublishTimeDifference()
+        {
+            return DateTime.Now.Subtract(DateTime.Parse(RelayInfo.RelaysPublishDate));
+        }
+
         public static void Reset()
         {
             Instance = null;
@@ -63,7 +68,7 @@ namespace Tor_relay_scanner_CS.Relays
             {
                 using (JsonDocument doc = JsonDocument.Parse(stream))
                 {
-                    RelayInfo = doc.Deserialize<RelayList>();
+                    RelayInfo = doc.Deserialize<RelayInformation>();
                 }
             }
             try

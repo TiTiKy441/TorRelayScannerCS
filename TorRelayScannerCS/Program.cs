@@ -1,8 +1,6 @@
 ﻿using System.Data;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
-using System.Security;
 using Microsoft.Win32;
 using Tor_relay_scanner_CS.Relays;
 
@@ -28,8 +26,8 @@ namespace Tor_relay_scanner_CS
         /// </summary>
         /// <param name="n">The number of concurrent relays tested</param>
         /// <param name="g">Test until at least this number of working relays are found</param>
-        /// <param name="c">Preferred country list, comma-separated. Example: se,gb,nl,de</param>
-        /// <param name="timeout">Socket connection timeout</param>
+        /// <param name="c">Include only following countries for testing, exclude by adding '!'. Example: nl,de (only netherlands and germany) Example exclude: !nl (not netherlands)</param>
+        /// <param name="timeout">Socket connection timeout in milliseconds</param>
         /// <param name="o">Output reachable relays to file</param>
         /// <param name="torrc">Output reachable relays in torrc format (with "Bridge" prefix)</param>
         /// <param name="proxy">Set proxy for onionoo information download. Format: http://user:pass@host:port; socks5h://user:pass@host:port</param>
@@ -39,7 +37,7 @@ namespace Tor_relay_scanner_CS
         /// <param name="notInstallBridges">Not install bridges into Tor browser</param>
         /// <param name="notStartBrowser">Not launch browser after scanning</param>
         /// <param name="useOutdated">Use already existing outdated relay info</param>
-        public static void Main(uint n=2000, uint g=5, string? c=null, uint timeout=900, string? o=null, bool torrc=false, string? proxy=null, string[]? url=null, uint[]? p=null, string? browserLocation=null, bool notInstallBridges=false, bool notStartBrowser=false, bool useOutdated=false)
+        public static void Main(uint n=50, uint g=3, string? c=null, uint timeout=500, string? o=null, bool torrc=false, string? proxy=null, string[]? url=null, uint[]? p=null, string? browserLocation=null, bool notInstallBridges=false, bool notStartBrowser=false, bool useOutdated=false)
         {
             Goal = g;
             string relayInfoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "relay-info.json");
@@ -47,16 +45,16 @@ namespace Tor_relay_scanner_CS
             Console.Title = "Attemping to retrieve relay information";
 
             if (proxy != null) Utils.ReinitHttpClient(proxy);
-            if (url != null) mirrors.AddRange(url);
+            if (url != null) mirrors.InsertRange(0, url);
 
 
+            TimeSpan timeDifference;
             if (RelayDistributor.TryInitialize(relayInfoPath) != null)
             {
-                DateTime downloadedPublishedDate = DateTime.Parse(RelayDistributor.Instance.RelayInfo.RelaysPublishDate);
-                TimeSpan downloadedDiff = DateTime.Now.Subtract(downloadedPublishedDate);
-                if (downloadedDiff.TotalDays > 1)
+                timeDifference = RelayDistributor.Instance.GetRelayPublishTimeDifference();
+                if (timeDifference.TotalDays > 1)
                 {
-                    Console.WriteLine("warn: found already existing relay information, but it was outdated by {0} hours", (int)downloadedDiff.TotalHours);
+                    Console.WriteLine("warn: found already existing relay information, but it was outdated by {0} hours", (int)timeDifference.TotalHours);
                     if (!useOutdated) RelayDistributor.Reset();
                 }
             }
@@ -84,11 +82,10 @@ namespace Tor_relay_scanner_CS
                 }
             }
 
-            DateTime publishedDate = DateTime.Parse(RelayDistributor.Instance.RelayInfo.RelaysPublishDate);
-            TimeSpan diff = DateTime.Now.Subtract(publishedDate);
-            if (diff.TotalDays > 1)
+            timeDifference = RelayDistributor.Instance.GetRelayPublishTimeDifference();
+            if (timeDifference.TotalDays > 1)
             {
-                Console.WriteLine("warn: retrieved relay information is outdated by {0} hours", (int)diff.TotalHours);
+                Console.WriteLine("warn: retrieved relay information is outdated by {0} hours", (int)timeDifference.TotalHours);
             }
 
             Relay[] relaysToScan = RelayDistributor.Instance.RelayInfo.Relays;
@@ -117,7 +114,7 @@ namespace Tor_relay_scanner_CS
             Console.Title = "Scan ended: " + WorkingRelayStrings.Count;
             Console.WriteLine("done: scan ended - {0}", WorkingRelayStrings.Count);
 
-            if (o != null) File.WriteAllLines(o, torrc ? WorkingRelayStrings.Select((x, _) => "Bridge " + x).Append("UseBridges 1").Reverse() : WorkingRelayStrings); // We'll try to keep UseBridges 1 as a first string
+            if (o != null) File.WriteAllLines(o, torrc ? WorkingRelayStrings.Select(x => "Bridge " + x).Append("UseBridges 1").Reverse() : WorkingRelayStrings); // We'll try to keep UseBridges 1 as a first string
 
             if (browserLocation == null && (!notInstallBridges || !notStartBrowser))
             {
@@ -152,10 +149,11 @@ namespace Tor_relay_scanner_CS
         private static string GetBrowserLocation()
         {
             string torPathAdd = "Tor Browser\\Browser";
-            string location = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), torPathAdd);
+            string location;
 
             List<string> searchFolders = new()
             {
+                Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
                 Environment.GetFolderPath(Environment.SpecialFolder.Programs),
                 Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory),
@@ -164,6 +162,7 @@ namespace Tor_relay_scanner_CS
             };
 
             searchFolders = searchFolders.Select(x => Path.Combine(x, torPathAdd)).ToList();
+            location = searchFolders[0]; // If nothing works, we'll just keep it as desktop/Tor Browser/Browser, even if it doesnt exist
 
             foreach (string folder in searchFolders)
             {
@@ -221,24 +220,13 @@ namespace Tor_relay_scanner_CS
             try
             {
                 List<string> contents = File.ReadAllLines(file).ToList();
+
                 contents.RemoveAll(x => x.Contains("torbrowser.settings.bridges."));
 
                 if (!contents.Contains("user_pref(\"torbrowser.settings.enabled\", true);"))
                 {
                     contents.Remove("user_pref(\"torbrowser.settings.enabled\", false);");
                     contents.Add("user_pref(\"torbrowser.settings.enabled\", true);");
-                }
-
-                if (!contents.Contains("user_pref(\"torbrowser.settings.firewall.enabled\", false);"))
-                {
-                    contents.Remove("user_pref(\"torbrowser.settings.firewall.enabled\", true);");
-                    contents.Add("user_pref(\"torbrowser.settings.firewall.enabled\", false);");
-                }
-
-                if (!contents.Contains("user_pref(\"torbrowser.settings.proxy.enabled\", false);"))
-                {
-                    contents.Remove("user_pref(\"torbrowser.settings.proxy.enabled\", true);");
-                    contents.Add("user_pref(\"torbrowser.settings.proxy.enabled\", false);");
                 }
 
                 contents.Add("user_pref(\"torbrowser.settings.bridges.enabled\", true);");
@@ -249,6 +237,7 @@ namespace Tor_relay_scanner_CS
                 {
                     contents.Add(string.Format("user_pref(" + '"' + "torbrowser.settings.bridges.bridge_strings.{0}" + '"' + ", {1});", i, '"' + WorkingRelayStrings[i] + '"'));
                 }
+
                 File.WriteAllLines(file, contents);
                 Console.WriteLine("done: install bridges");
             }
