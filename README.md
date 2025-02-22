@@ -16,7 +16,7 @@ Usage:
 Options:
   -n <n>                                 The number of concurrent relays tested [default: 2000]
   -g <g>                                 Test until at least this number of working relays are found [default: 5]
-  -c <c>                                 Preferred country list, comma-separated. Example: se,gb,nl,de []
+  -c <c>                                 Include only following countries for testing, exclude by adding !. Example: se,gb,nl,de Example exclude: !nl (not netherlands) []
   --timeout <timeout>                    Socket connection timeout [default: 900]
   -o <o>                                 Output reachable relays to file []
   --torrc                                Output reachable relays in torrc format (with "Bridge" prefix) [default: False]
