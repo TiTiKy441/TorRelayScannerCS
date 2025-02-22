@@ -26,7 +26,7 @@ namespace Tor_relay_scanner_CS
         /// </summary>
         /// <param name="n">The number of concurrent relays tested</param>
         /// <param name="g">Test until at least this number of working relays are found</param>
-        /// <param name="c">Include only following countries for testing, exclude by adding '!'. Example: nl,de (only netherlands and germany) Example exclude: !nl (not netherlands)</param>
+        /// <param name="c">Include only following countries for testing, exclude by adding '-'. Example: nl,de (only netherlands and germany) Example exclude: -nl (not netherlands)</param>
         /// <param name="timeout">Socket connection timeout in milliseconds</param>
         /// <param name="o">Output reachable relays to file</param>
         /// <param name="torrc">Output reachable relays in torrc format (with "Bridge" prefix)</param>
