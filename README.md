@@ -14,10 +14,10 @@ Usage:
   TorRelayScannerCS [options]
 
 Options:
-  -n <n>                                 The number of concurrent relays tested [default: 2000]
-  -g <g>                                 Test until at least this number of working relays are found [default: 5]
-  -c <c>                                 Include only following countries for testing, exclude by adding !. Example: se,gb,nl,de Example exclude: !nl (not netherlands) []
-  --timeout <timeout>                    Socket connection timeout [default: 900]
+  -n <n>                                 The number of concurrent relays tested [default: 50]
+  -g <g>                                 Test until at least this number of working relays are found [default: 3]
+  -c <c>                                 Include only following countries for testing, exclude by adding '!'. Example: nl,de (only netherlands and germany) Example exclude: !nl (not netherlands) []
+  --timeout <timeout>                    Socket connection timeout in milliseconds [default: 500]
   -o <o>                                 Output reachable relays to file []
   --torrc                                Output reachable relays in torrc format (with "Bridge" prefix) [default: False]
   --proxy <proxy>                        Set proxy for onionoo information download. Format: http://user:pass@host:port; socks5h://user:pass@host:port []
