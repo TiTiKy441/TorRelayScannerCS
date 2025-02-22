@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Globalization;
+using System.Net;
 using Tor_relay_scanner_CS.Relays;
 
 namespace Tor_relay_scanner_CS
@@ -27,6 +28,17 @@ namespace Tor_relay_scanner_CS
         {
             if (relays.Count() == 0) return null;
             return relays.First();
+        }
+
+        public static IEnumerable<Relay> ExcludeCountry(this IEnumerable<Relay> relays, string country)
+        {
+            return relays.Where(x => x.Country != country);
+        }
+
+        public static IEnumerable<Relay> ExcludeCountries(this IEnumerable<Relay> relays, IEnumerable<string> countries)
+        {
+            if (!countries.Any()) return relays;
+            return relays.Where(x => !countries.Contains(x.Country));
         }
 
         public static string Download(string url)

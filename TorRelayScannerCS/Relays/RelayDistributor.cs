@@ -76,44 +76,56 @@ namespace Tor_relay_scanner_CS.Relays
             }
         }
 
-        public Relay[] GetRelaysWithFlags(string[] flags)
+        public Relay[] GetRelaysWithFlags(IEnumerable<string> flags)
         {
-            return RelayInfo.Relays.Where((x, i) => flags.All(y => x.Flags.Contains(y))).ToArray();
+            return RelayInfo.Relays.Where(x => flags.All(y => x.Flags.Contains(y))).ToArray();
         }
 
         public Relay[] GetRelaysWithFlag(string flag)
         {
-            return RelayInfo.Relays.Where((x, i) => x.Flags.Contains(flag)).ToArray();
+            return RelayInfo.Relays.Where(x => x.Flags.Contains(flag)).ToArray();
         }
 
-        public Relay[] GetRelaysFromCountries(string[] countries)
+        public Relay[] GetRelaysFromCountries(IEnumerable<string> countries)
         {
-            return RelayInfo.Relays.Where((x, i) => countries.Contains(x.Country)).ToArray();
+            if (!countries.Any()) return RelayInfo.Relays;
+            return RelayInfo.Relays.Where(x => countries.Contains(x.Country)).ToArray();
         }
 
         public Relay[] GetRelaysFromCountry(string country)
         {
-            return RelayInfo.Relays.Where((x, i) => x.Country.Contains(country)).ToArray();
+            return RelayInfo.Relays.Where(x => x.Country.Contains(country)).ToArray();
+        }
+
+        public Relay[] ExcludeCountry(string coutnry)
+        {
+            return RelayInfo.Relays.Where(x => x.Country != coutnry).ToArray();
+        }
+        
+        public Relay[] ExcludeCountries(IEnumerable<string> countries)
+        {
+            if (!countries.Any()) return RelayInfo.Relays;
+            return RelayInfo.Relays.Where(x => !countries.Contains(x.Country)).ToArray();
         }
 
         public Relay? FindRelayByIp(string ip)
         {
-            return RelayInfo.Relays.Where((x, i) => x.Addresses.Contains(ip)).FirstOrNull();
+            return RelayInfo.Relays.Where(x => x.Addresses.Contains(ip)).FirstOrNull();
         }
 
         public Relay? FindRelayByFingerprint(string fingerprint)
         {
-            return RelayInfo.Relays.Where((x, i) => x.Fingerprint.Contains(fingerprint)).FirstOrNull();
+            return RelayInfo.Relays.Where(x => x.Fingerprint.Contains(fingerprint)).FirstOrNull();
         }
 
-        public Relay[] GetRelaysWithoutFlags(string[] flags)
+        public Relay[] GetRelaysWithoutFlags(IEnumerable<string> flags)
         {
-            return RelayInfo.Relays.Where((x, i) => !flags.Any(y => x.Flags.Contains(y))).ToArray();
+            return RelayInfo.Relays.Where(x => !flags.Any(y => x.Flags.Contains(y))).ToArray();
         }
 
         public Relay[] GetRelaysWithoutFlag(string flag)
         {
-            return RelayInfo.Relays.Where((x, i) => !x.Flags.Contains(flag)).ToArray();
+            return RelayInfo.Relays.Where(x => !x.Flags.Contains(flag)).ToArray();
         }
     }
 }

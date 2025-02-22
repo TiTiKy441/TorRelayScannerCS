@@ -84,14 +84,24 @@ namespace Tor_relay_scanner_CS
                 }
             }
 
-            Relay[] relaysToScan = RelayDistributor.Instance.RelayInfo.Relays;
-            if (c != null) relaysToScan = RelayDistributor.Instance.GetRelaysFromCountries(c.Split(","));
-
             DateTime publishedDate = DateTime.Parse(RelayDistributor.Instance.RelayInfo.RelaysPublishDate);
             TimeSpan diff = DateTime.Now.Subtract(publishedDate);
             if (diff.TotalDays > 1)
             {
                 Console.WriteLine("warn: retrieved relay information is outdated by {0} hours", (int)diff.TotalHours);
+            }
+
+            Relay[] relaysToScan = RelayDistributor.Instance.RelayInfo.Relays;
+            List<string> excludeCountries = new();
+            List<string> includeCountries = new();
+            if (c != null)
+            {
+                foreach(string country in c.Split(","))
+                {
+                    if (country.StartsWith("-")) excludeCountries.Add(country[1..]);
+                    else includeCountries.Add(country);
+                }
+                relaysToScan = RelayDistributor.Instance.GetRelaysFromCountries(includeCountries).ExcludeCountries(excludeCountries).ToArray();
             }
 
             RelayScanner.OnNewWorkingRelay += RelayScanner_OnNewWorkingRelay;
