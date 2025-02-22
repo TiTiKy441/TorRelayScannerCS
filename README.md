@@ -34,6 +34,9 @@ Note: browser-location is exptected to contain an executable inside, by default 
 
 ## Behaviour difference compared to original program
 Different logging format
+
 Browser location is not required, program tries to auto-detect it
 
-install-bridges and start-browser turned to not-install-bridges and not-start-browser, behaviour by default install bridges and starts the browser
+install-bridges and start-browser turned to not-install-bridges and not-start-browser
+
+ behaviour by default install bridges and starts the browser
