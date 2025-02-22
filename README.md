@@ -39,4 +39,6 @@ Browser location is not required, program tries to auto-detect it
 
 install-bridges and start-browser turned to not-install-bridges and not-start-browser
 
- behaviour by default install bridges and starts the browser
+behaviour by default install bridges and starts the browser
+
+-c argument doesnt support preffered countries, only include or exclude
