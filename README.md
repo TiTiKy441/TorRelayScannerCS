@@ -5,6 +5,13 @@
 Attempts to download information about all tor relays, from official site and through mirrors embedded in the code
 Attempts to ping them and find reachable ones to be used as bridges to access Tor network even in banned regions
 
+## Supported platforms
+Currently tested only on Windows 10 x64.
+
+Basic functionality should be available on Linux, tor location autodetection probably doesnt work
+
+If anyone can test it on Linux, would be much appreciated
+
 ## How to use
 ```
 Description:
