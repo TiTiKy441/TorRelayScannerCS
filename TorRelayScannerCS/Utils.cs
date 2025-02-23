@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Net;
+﻿using System.Net;
 using Tor_relay_scanner_CS.Relays;
 
 namespace Tor_relay_scanner_CS
@@ -26,7 +25,7 @@ namespace Tor_relay_scanner_CS
 
         public static Relay? FirstOrNull(this IEnumerable<Relay> relays)
         {
-            if (relays.Count() == 0) return null;
+            if (!relays.Any()) return null;
             return relays.First();
         }
 

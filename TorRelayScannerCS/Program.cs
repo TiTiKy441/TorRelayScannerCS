@@ -122,6 +122,7 @@ namespace Tor_relay_scanner_CS
                 browserLocation = GetBrowserLocation();
             }
 
+            // TODO: ADD LINUX SUPPORT!!!
             if (!notInstallBridges) InstallBridges(Path.GetFullPath(Path.Combine(browserLocation, "TorBrowser\\Data\\Browser\\profile.default\\prefs.js")));
 
             if (!notStartBrowser) StartBrowser(Path.GetFullPath(browserLocation));
@@ -146,6 +147,7 @@ namespace Tor_relay_scanner_CS
             if (WorkingRelayStrings.Count >= Goal) RelayScanner.StopScan();
         }
 
+        // TODO: Add linux support
         private static string GetBrowserLocation()
         {
             string torPathAdd = "Tor Browser\\Browser";
@@ -235,7 +237,7 @@ namespace Tor_relay_scanner_CS
 
                 for (int i = 0; i < WorkingRelayStrings.Count; i++) 
                 {
-                    contents.Add(string.Format("user_pref(\"torbrowser.settings.bridges.bridge_strings.{0}\", {1});", i, '"' + WorkingRelayStrings[i] + '"'));
+                    contents.Add(string.Format("user_pref(\"torbrowser.settings.bridges.bridge_strings.{0}\", \"{1}\");", i, WorkingRelayStrings[i]));
                 }
 
                 File.WriteAllLines(file, contents);
@@ -247,6 +249,7 @@ namespace Tor_relay_scanner_CS
             }
         }
 
+        // TODO: Test if it supports linux
         private static void StartBrowser(string path)
         {
             string args;
