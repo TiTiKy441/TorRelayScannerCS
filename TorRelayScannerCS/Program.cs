@@ -106,7 +106,7 @@ namespace Tor_relay_scanner_CS
 
             Console.CancelKeyPress += Console_CancelKeyPress;
 
-            RelayScanner.StartScan((int)timeout, (int)n, relaysToScan, p?.ToList().ConvertAll(x => (int)x).ToArray());
+            RelayScanner.StartScan(TimeSpan.FromMilliseconds((int)timeout), (int)n, relaysToScan, p?.ToList().ConvertAll(x => (int)x).ToArray());
             Console.WriteLine("done: scan started");
             Console.Title = "Scan started";
             RelayScanner.WaitForEnd();
@@ -235,7 +235,7 @@ namespace Tor_relay_scanner_CS
 
                 for (int i = 0; i < WorkingRelayStrings.Count; i++) 
                 {
-                    contents.Add(string.Format("user_pref(" + '"' + "torbrowser.settings.bridges.bridge_strings.{0}" + '"' + ", {1});", i, '"' + WorkingRelayStrings[i] + '"'));
+                    contents.Add(string.Format("user_pref(\"torbrowser.settings.bridges.bridge_strings.{0}\", {1});", i, '"' + WorkingRelayStrings[i] + '"'));
                 }
 
                 File.WriteAllLines(file, contents);

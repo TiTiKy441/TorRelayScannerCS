@@ -22,7 +22,7 @@ namespace Tor_relay_scanner_CS.Relays
         public static event EventHandler<EventArgs>? OnScanEnded;
         public static event EventHandler<OnNewWorkingRelayEventArgs>? OnNewWorkingRelay;
 
-        public static Task? StartScan(int timeout, int packetSize, Relay[]? relaysToScan=null, int[]? port=null)
+        public static Task? StartScan(TimeSpan timeout, int packetSize, Relay[]? relaysToScan=null, int[]? port=null)
         {
             if (Scanning) return null;//throw new InvalidOperationException("Scan is already in progress");
 
@@ -47,23 +47,24 @@ namespace Tor_relay_scanner_CS.Relays
             _cancellationTokenSource.Token.WaitHandle.WaitOne();
         }
 
-        private static void ScanWork(int timeout, int packetSize, int[]? ports=null)
+        private static void ScanWork(TimeSpan timeout, int packetSize, int[]? ports=null)
         {
             try
             {
-                List<string[]> relayStrings = new();
+                List<(IPEndPoint, string)> relayStrings = new();
 
                 foreach (Relay rel in _allRelays)
                 {
                     foreach (string addr in rel.Addresses)
                     {
-                        if (ports != null && !ports.Contains(IPEndPoint.Parse(addr).Port)) continue;
-                        relayStrings.Add(new string[2] { addr, rel.Fingerprint });
+                        IPEndPoint endPoint = IPEndPoint.Parse(addr);
+                        if (ports != null && !ports.Contains(endPoint.Port)) continue;
+                        relayStrings.Add((endPoint, rel.Fingerprint));
                     }
                 }
 
                 int pointer = 0;
-                string[] test;
+                (IPEndPoint, string) test;
 
                 while (pointer < relayStrings.Count && !_cancellationTokenSource.IsCancellationRequested)
                 {
@@ -73,7 +74,7 @@ namespace Tor_relay_scanner_CS.Relays
                     {
                         test = relayStrings[pointer++];
                         created++;
-                        Test(test[0], test[1], timeout).ContinueWith(t => { Interlocked.Increment(ref completed); });
+                        Test(test.Item1, test.Item2, timeout).ContinueWith(t => { Interlocked.Increment(ref completed); });
                     }
                     while (completed < created)
                     {
@@ -90,14 +91,14 @@ namespace Tor_relay_scanner_CS.Relays
             }
         }
 
-        private static Task Test(string addr, string fingerprint, int timeout)
+        private static Task Test(IPEndPoint addr, string fingerprint, TimeSpan timeout)
         {
             Socket client = new(SocketType.Stream, ProtocolType.Tcp);
-            return client.ConnectAsync(IPEndPoint.Parse(addr), _cancellationTokenSource.Token).AsTask().WaitAsync(TimeSpan.FromMilliseconds(timeout), _cancellationTokenSource.Token).ContinueWith(t =>
+            return client.ConnectAsync(addr, _cancellationTokenSource.Token).AsTask().WaitAsync(timeout, _cancellationTokenSource.Token).ContinueWith(t =>
             {
                 if (t.IsCompletedSuccessfully && !_cancellationTokenSource.IsCancellationRequested)
                 {
-                    if (!_workingRelaysFingerprints.Contains(fingerprint)) OnNewWorkingRelay?.Invoke(null, new OnNewWorkingRelayEventArgs(addr + ' ' + fingerprint));
+                    if (!_workingRelaysFingerprints.Contains(fingerprint)) OnNewWorkingRelay?.Invoke(null, new OnNewWorkingRelayEventArgs(addr.ToString() + ' ' + fingerprint));
                     _workingRelaysFingerprints.Add(fingerprint);
                 }
                 client.Close();
