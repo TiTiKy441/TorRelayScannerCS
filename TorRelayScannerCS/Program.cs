@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using System.CommandLine.Rendering;
+using System.Data;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
@@ -29,16 +30,25 @@ namespace Tor_relay_scanner_CS
         /// <param name="c">Include only following countries for testing, exclude by adding '-'. Example: nl,de (only netherlands and germany) Example exclude: -nl (not netherlands)</param>
         /// <param name="timeout">Socket connection timeout in milliseconds</param>
         /// <param name="o">Output reachable relays to file</param>
-        /// <param name="torrc">Output reachable relays in torrc format (with "Bridge" prefix)</param>
+        /// <param name="torrc">Output/install reachable relays in torrc format</param>
         /// <param name="proxy">Set proxy for onionoo information download. Format: http://user:pass@host:port; socks5h://user:pass@host:port</param>
         /// <param name="url">Preferred alternative URL for onionoo relay list. Could be used multiple times.</param>
         /// <param name="p">Scan for relays running on specified port number. Could be used multiple times.</param>
         /// <param name="browserLocation">Tor browser executable location</param>
         /// <param name="notInstallBridges">Not install bridges into Tor browser</param>
         /// <param name="notStartBrowser">Not launch browser after scanning</param>
-        /// <param name="useOutdated">Use already existing outdated relay info</param>
-        public static void Main(uint n=50, uint g=3, string? c=null, uint timeout=500, string? o=null, bool torrc=false, string? proxy=null, string[]? url=null, uint[]? p=null, string? browserLocation=null, bool notInstallBridges=false, bool notStartBrowser=false, bool useOutdated=false)
+        /// <param name="useOutdated">Use already existing outdated relay information</param>
+        /// <param name="forceUpdate">Update relay information file regarding if it is outdated or not</param>
+        public static void Main(uint n=50, uint g=3, string? c=null, uint timeout=500, string? o=null, bool torrc=false, string? proxy=null, string[]? url=null, uint[]? p=null, string? browserLocation=null, bool notInstallBridges=false, bool notStartBrowser=false, bool useOutdated=false, bool forceUpdate=false)
         {
+            if (forceUpdate && useOutdated)
+            {
+                Console.WriteLine("fail: flags --use-outdated and --force-update are set at the same time");
+                Console.WriteLine("Press any key to exit...");
+                Console.ReadKey();
+                return;
+            }
+
             Goal = g;
             string relayInfoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "relay-info.json");
 
@@ -49,7 +59,7 @@ namespace Tor_relay_scanner_CS
 
 
             TimeSpan timeDifference;
-            if (RelayDistributor.TryInitialize(relayInfoPath) != null)
+            if (!forceUpdate && (RelayDistributor.TryInitialize(relayInfoPath) != null))
             {
                 timeDifference = RelayDistributor.Instance.GetRelayPublishTimeDifference();
                 if (timeDifference.TotalDays > 1)
@@ -114,8 +124,17 @@ namespace Tor_relay_scanner_CS
             Console.Title = "Scan ended: " + WorkingRelayStrings.Count;
             Console.WriteLine("done: scan ended - {0}", WorkingRelayStrings.Count);
 
-            if (o != null) File.WriteAllLines(o, torrc ? WorkingRelayStrings.Select(x => "Bridge " + x).Append("UseBridges 1").Reverse() : WorkingRelayStrings); // We'll try to keep UseBridges 1 as a first string
-
+            if (o != null)
+            {
+                if (torrc)
+                {
+                    InstallBridgesIntoTorrc(o);
+                }
+                else
+                {
+                    File.WriteAllLines(o, WorkingRelayStrings);
+                }
+            }
             if (browserLocation == null && (!notInstallBridges || !notStartBrowser))
             {
                 Console.WriteLine("warn: trying to use auto-detected tor browser location");
@@ -123,7 +142,7 @@ namespace Tor_relay_scanner_CS
             }
 
             // TODO: ADD LINUX SUPPORT!!!
-            if (!notInstallBridges) InstallBridges(Path.GetFullPath(Path.Combine(browserLocation, "TorBrowser\\Data\\Browser\\profile.default\\prefs.js")));
+            if (!notInstallBridges) InstallBridgesIntoPrefs(Path.GetFullPath(Path.Combine(browserLocation, "TorBrowser\\Data\\Browser\\profile.default\\prefs.js")));
 
             if (!notStartBrowser) StartBrowser(Path.GetFullPath(browserLocation));
         }
@@ -217,7 +236,36 @@ namespace Tor_relay_scanner_CS
             return location;
         }
 
-        private static void InstallBridges(string file)
+        private static void InstallBridgesIntoTorrc(string file)
+        {
+            try
+            {
+                List<string> contents = new();
+                if (File.Exists(file))
+                {
+                    contents = File.ReadAllLines(file).ToList();
+                }
+                if (!contents.Contains("UseBridges 1"))
+                {
+                    contents.Remove("UseBridges 0");
+                    contents.Add("UseBridges 1");
+                }
+                contents.RemoveAll(x => x.StartsWith("Bridge "));
+                foreach (string bridge in WorkingRelayStrings)
+                {
+                    contents.Add("Bridge " + bridge);
+                }
+                File.WriteAllLines(file, contents);
+
+                Console.WriteLine("done: torrc install bridges");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("fail: torrc install bridges - {0}", e.Message);
+            }
+        }
+
+        private static void InstallBridgesIntoPrefs(string file)
         {
             try
             {
@@ -241,11 +289,11 @@ namespace Tor_relay_scanner_CS
                 }
 
                 File.WriteAllLines(file, contents);
-                Console.WriteLine("done: install bridges");
+                Console.WriteLine("done: prefsjs install bridges");
             }
             catch(Exception e)
             {
-                Console.WriteLine("fail: install bridges - {0}", e.Message);
+                Console.WriteLine("fail: prefsjs install bridges - {0}", e.Message);
             }
         }
 
