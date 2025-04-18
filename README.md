@@ -26,14 +26,15 @@ Options:
   -c <c>                                 Include only following countries for testing, exclude by adding '-'. Example: nl,de (only netherlands and germany) Example exclude: -nl (not netherlands) []
   --timeout <timeout>                    Socket connection timeout in milliseconds [default: 500]
   -o <o>                                 Output reachable relays to file []
-  --torrc                                Output reachable relays in torrc format (with "Bridge" prefix) [default: False]
+  --torrc                                Output/install reachable relays in torrc format [default: False]
   --proxy <proxy>                        Set proxy for onionoo information download. Format: http://user:pass@host:port; socks5h://user:pass@host:port []
   --url <url>                            Preferred alternative URL for onionoo relay list. Could be used multiple times. []
   -p <p>                                 Scan for relays running on specified port number. Could be used multiple times. []
   --browser-location <browser-location>  Tor browser executable location []
   --not-install-bridges                  Not install bridges into Tor browser [default: False]
   --not-start-browser                    Not launch browser after scanning [default: False]
-  --use-outdated                         Use already existing outdated relay info [default: False]
+  --use-outdated                         Use already existing outdated relay information [default: False]
+  --force-update                         Update relay information file regarding if it is outdated or not [default: False]
   --version                              Show version information
   -?, -h, --help                         Show help and usage information
 ```
@@ -52,5 +53,7 @@ Browser location is not required, program tries to auto-detect it by enumerating
 install-bridges and start-browser turned to not-install-bridges and not-start-browser.
 
 behaviour by default install bridges and start the browser.
+
+added --force-update flag to update relays information regarding if it's outdated or not
 
 -c argument doesnt support preffered countries, only include or exclude.
